@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker | Minimal</title>
+    <style>
+        /* CSS: Clean & Sober Design */
+        :root {
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --accent-color: #2d3e50; /* Slate Blue Accent */
+            --text-main: #333333;
+            --text-light: #666666;
+            --border-color: #e0e0e0;
+            --danger-color: #d9534f;
+        }
+
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h2 { font-weight: 500; font-size: 1.2rem; margin-bottom: 1rem; }
+
+        /* Summary Section */
+        .summary-card {
+            background: var(--accent-color);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .summary-item label { font-size: 0.8rem; opacity: 0.8; }
+        .summary-item div { font-size: 1.4rem; font-weight: bold; }
+
+        /* Input Sections */
+        .section {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.9rem; margin-bottom: 5px; color: var(--text-light); }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-primary { background: var(--accent-color); color: white; }
+        .btn-secondary { background: #eee; color: var(--text-main); margin-top: 10px; }
+
+        /* Expense List */
+        .expense-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .expense-info .cat { font-weight: 500; display: block; }
+        .expense-info .meta { font-size: 0.8rem; color: var(--text-light); }
+        .expense-amount { font-weight: 600; text-align: right; }
+        
+        .delete-btn {
+            color: var(--danger-color);
+            background: none;
+            border: none;
+            width: auto;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="summary-card">
+        <div class="summary-grid">
+            <div class="summary-item">
+                <label>Total Salary</label>
+                <div id="display-salary">$0</div>
+            </div>
+            <div class="summary-item">
+                <label>Remaining</label>
+                <div id="display-remaining">$0</div>
+            </div>
+        </div>
+        <div style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+            <label>Total Expenses: </label> <span id="display-total-expenses">$0</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Set Monthly Salary</h2>
+        <div class="form-group">
+            <input type="number" id="salary-input" placeholder="Enter Amount">
+            <button class="btn-secondary" onclick="saveSalary()">Update Salary</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Add New Expense</h2>
+        <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="exp-date">
+        </div>
+        <div class="form-group">
+            <label>Category</label>
+            <select id="exp-category">
+                <option value="Food">Food</option>
+                <option value="Rent">Rent</option>
+                <option value="Bills">Bills</option>
+                <option value="Travel">Travel</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Amount</label>
+            <input type="number" id="exp-amount" placeholder="0.00">
+        </div>
+        <div class="form-group">
+            <label>Notes (Optional)</label>
+            <input type="text" id="exp-notes" placeholder="e.g. Weekly groceries">
+        </div>
+        <button class="btn-primary" onclick="handleAddExpense()">Add Expense</button>
+    </div>
+
+    <div class="section">
+        <h2>History</h2>
+        <div id="expense-list">
+            </div>
+    </div>
+</div>
+
+<script>
+    /**
+     * DATA LAYER - Logic separated for future Airtable integration
+     */
+    let appData = {
+        salary: 0,
+        expenses: []
+    };
+
+    // Initialize App
+    window.onload = () => {
+        fetchData();
+        // Set default date to today
+        document.getElementById('exp-date').valueAsDate = new Date();
+    };
+
+    // FUTURE: Connect this function to Airtable API GET
+    function fetchData() {
+        const savedData = localStorage.getItem('expense_app_data');
+        if (savedData) {
+            appData = JSON.parse(savedData);
+        }
+        updateUI();
+    }
+
+    // FUTURE: Connect this function to Airtable API POST (Salary field)
+    function saveSalary() {
+        const val = document.getElementById('salary-input').value;
+        if (!val) return;
+        appData.salary = parseFloat(val);
+        syncData();
+    }
+
+    // FUTURE: Connect this function to Airtable API POST (Records)
+    function handleAddExpense() {
+        const date = document.getElementById('exp-date').value;
+        const category = document.getElementById('exp-category').value;
+        const amount = document.getElementById('exp-amount').value;
+        const notes = document.getElementById('exp-notes').value;
+
+        if (!date || !amount) {
+            alert("Please fill date and amount");
+            return;
+        }
+
+        const newExpense = {
+            id: Date.now(), // Temporary ID
+            date,
+            category,
+            amount: parseFloat(amount),
+            notes
+        };
+
+        addExpense(newExpense);
+    }
+
+    function addExpense(item) {
+        appData.expenses.unshift(item); // Add to beginning
+        syncData();
+        // Clear inputs
+        document.getElementById('exp-amount').value = '';
+        document.getElementById('exp-notes').value = '';
+    }
+
+    // FUTURE: Connect this function to Airtable API DELETE
+    function deleteExpense(id) {
+        appData.expenses = appData.expenses.filter(item => item.id !== id);
+        syncData();
+    }
+
+    function syncData() {
+        // Save to LocalStorage for now
+        localStorage.setItem('expense_app_data', JSON.stringify(appData));
+        updateUI();
+    }
+
+    /**
+     * UI RENDERING LAYER
+     */
+    function updateUI() {
+        const listContainer = document.getElementById('expense-list');
+        listContainer.innerHTML = '';
+
+        let totalExpenses = 0;
+
+        appData.expenses.forEach(item => {
+            totalExpenses += item.amount;
+            const div = document.createElement('div');
+            div.className = 'expense-item';
+            div.innerHTML = `
+                <div class="expense-info">
+                    <span class="cat">${item.category}</span>
+                    <span class="meta">${item.date} ${item.notes ? '• ' + item.notes : ''}</span>
+                </div>
+                <div class="expense-amount">
+                    $${item.amount.toLocaleString()}
+                    <br>
+                    <button class="delete-btn" onclick="deleteExpense(${item.id})">Delete</button>
+                </div>
+            `;
+            listContainer.appendChild(div);
+        });
+
+        // Summary Updates
+        document.getElementById('display-salary').innerText = `$${appData.salary.toLocaleString()}`;
+        document.getElementById('display-total-expenses').innerText = `$${totalExpenses.toLocaleString()}`;
+        document.getElementById('display-remaining').innerText = `$${(appData.salary - totalExpenses).toLocaleString()}`;
+    }
+</script>
+
+</body>
+</html>
